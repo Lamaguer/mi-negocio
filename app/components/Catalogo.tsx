@@ -3,16 +3,14 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { supabase } from '@/lib/supabase'
 
-export default function Catalogo({ productos }: { productos: any[] }) {
+export default function Catalogo({ productos: productosIniciales }: { productos: any[] }) {
   const [busqueda, setBusqueda] = useState('')
   const [carrito, setCarrito] = useState<any[]>([])
   const [carritoAbierto, setCarritoAbierto] = useState(false)
   const [checkout, setCheckout] = useState(false)
+  const [productos, setProductos] = useState(productosIniciales)
   const router = useRouter()
 
   useEffect(() => {
@@ -22,9 +20,13 @@ export default function Catalogo({ productos }: { productos: any[] }) {
   }, [])
 
   const agregarAlCarrito = (producto: any) => {
+    if (producto.stock <= 0) return
     setCarrito(prev => {
       const existe = prev.find(p => p.id === producto.id)
-      if (existe) return prev.map(p => p.id === producto.id ? { ...p, cantidad: p.cantidad + 1 } : p)
+      if (existe) {
+        if (existe.cantidad >= producto.stock) return prev
+        return prev.map(p => p.id === producto.id ? { ...p, cantidad: p.cantidad + 1 } : p)
+      }
       return [...prev, { ...producto, cantidad: 1 }]
     })
   }
@@ -35,15 +37,38 @@ export default function Catalogo({ productos }: { productos: any[] }) {
 
   const total = carrito.reduce((acc, p) => acc + p.precio * p.cantidad, 0)
 
-  const handleCheckout = () => {
-    setCheckout(true)
-    setTimeout(() => {
-      setCarrito([])
-      setCheckout(false)
-      setCarritoAbierto(false)
-      alert('¡Compra realizada con éxito! Gracias por tu pedido.')
-    }, 2000)
+ const handleCheckout = async () => {
+  setCheckout(true)
+
+  for (const item of carrito) {
+    const { error: errorStock } = await supabase
+      .from('productos')
+      .update({ stock: item.stock - item.cantidad })
+      .eq('id', item.id)
+    
+    if (errorStock) console.log('Error stock:', errorStock)
+
+ const { data: ventaData, error: errorVenta } = await supabase.from('ventas').insert({
+  producto_nombre: item.nombre,
+  cantidad: item.cantidad,
+  total: item.precio * item.cantidad
+}).select()
+
+console.log('Venta insertada:', ventaData, 'Error:', JSON.stringify(errorVenta))
+
+if (errorVenta) console.log('Error venta:', JSON.stringify(errorVenta))
   }
+
+  const { data } = await supabase.from('productos').select('*')
+  if (data) setProductos(data)
+
+  setTimeout(() => {
+    setCarrito([])
+    setCheckout(false)
+    setCarritoAbierto(false)
+    alert('¡Compra realizada con éxito! Gracias por tu pedido.')
+  }, 2000)
+}
 
   const productosFiltrados = productos.filter(p =>
     p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -137,9 +162,10 @@ export default function Catalogo({ productos }: { productos: any[] }) {
                 </p>
                 <button
                   onClick={() => agregarAlCarrito(producto)}
-                  className="mt-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg p-2 w-full text-sm"
+                  disabled={producto.stock <= 0}
+                  className="mt-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg p-2 w-full text-sm"
                 >
-                  Agregar al carrito
+                  {producto.stock > 0 ? 'Agregar al carrito' : 'Sin stock'}
                 </button>
               </div>
             ))}
