@@ -17,8 +17,9 @@ export default function RootLayout({
         <nav className="bg-gray-900 border-b border-gray-700 px-8 py-4 flex justify-between items-center">
           <span className="text-xl font-bold text-white">STOCK FORTRESS</span>
           <div className="flex gap-6">
-            <a href="/" className="hover:text-blue-400 transition">Shop</a>
             <a href="/about" className="hover:text-blue-400 transition">About Us</a>
+            <a href="/" className="hover:text-blue-400 transition">Shop</a>
+            <a href="/admin" className="hover:text-blue-400 transition">Admin</a>
             <a href="/chat" className="hover:text-blue-400 transition">Chat</a>
             <a href="/login" className="bg-blue-600 hover:bg-blue-700 px-4 py-1 rounded-lg transition">Login</a>
           </div>

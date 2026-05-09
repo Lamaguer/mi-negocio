@@ -9,11 +9,14 @@ export default function Login() {
   const [error, setError] = useState('')
   const router = useRouter()
 
-  const handleLogin = async () => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setError(error.message)
-    else router.push('/')
+const handleLogin = async () => {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) {
+    setError(error.message)
+  } else if (data.session) {
+    window.location.href = '/'
   }
+}
 
   const handleRegister = async () => {
     const { error } = await supabase.auth.signUp({ email, password })
